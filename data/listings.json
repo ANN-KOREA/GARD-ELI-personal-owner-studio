@@ -1,0 +1,30 @@
+[
+  {
+    "format": "GARD_ELI_LISTING_V1",
+    "listingId": "GEL-DEMO-P01",
+    "ownerAlias": "[가상] 고객 P01",
+    "ownerKey": {
+      "key_ops": [
+        "verify"
+      ],
+      "ext": true,
+      "kty": "EC",
+      "x": "jt0YYDXJq38JaGNGKrZtS-m76_s-4PIXsUWujiYvw0s",
+      "y": "AoiXqbVrz-91gEVHDvDk71a9-rKUkdYZCkoPKGIIzm0",
+      "crv": "P-256"
+    },
+    "ownerKeyFingerprint": "384413355aff40e93f6051fcb251b6a057240b1e6ff924d71730546352204f80",
+    "title": "[가상] 나의 온라인 신청 독립 완수",
+    "summary": "합성 시연 사례. 디지털 교육 전후 같은 신청 과업을 20분에서 15분으로 수행한 가상 개인이 직접 공개를 승인했다고 가정한 예시.",
+    "provider": "가상 새길 디지털센터",
+    "service": "생활 디지털 교육",
+    "task": "온라인 신청서 제출",
+    "metric": "신청 소요시간",
+    "unit": "minute",
+    "measurementStatus": "RAW_ONLY",
+    "disclosure": "INQUIRY_REQUIRED",
+    "isDemo": true,
+    "publishedAt": "2026-11-20T00:00:00.000Z",
+    "signature": "iGYW7RGB0R90s61/A1o3jfcDxF6ZJ7l8kvY81dM4iH5UX3/kQ8h4b88lCPkmYn4eWVTn/CLxzG0jO0vFHZxdGQ=="
+  }
+]
