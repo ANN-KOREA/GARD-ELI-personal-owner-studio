@@ -2,6 +2,48 @@ import {uuid,isoNow,escapeHTML,readJSON,saveFile,sha256,canonicalJson,verifyObje
 const $=id=>document.getElementById(id);let received=[],listings=[];
 const status=(msg,err=false)=>{$('status').textContent=msg;$('status').className=err?'error':'ok';};
 const errStr=e=>e?.message||String(e);
+let inspected = null;
+const intake=(msg,kind='info')=>{const e=$('intakeStatus');if(!e)return;e.textContent=msg;e.className=`intake-status ${kind}`;};
+const inspection=(msg,kind='info')=>{const e=$('intakeDiagnostic');e.textContent=msg;e.className=`intake-diagnostic ${kind}`;};
+function recipientMatch(x,ctx){return x?.recipient?.buyerId===ctx.buyerId&&x?.recipient?.campaignId===ctx.campaignId;}
+async function inspectSelectedRelease(){
+ inspected=null;$('applyRecipient').disabled=true;
+ const files=[...$('releaseFiles').files];
+ if(!files.length){inspection('먼저 오너 제공 .gardrelease.json 파일을 선택하세요.','bad');return;}
+ if(files.length!==1){inspection(`선택한 파일 ${files.length}개. 수신 대상 미리보기는 파일 1개씩 선택해야 합니다. 다중 수신은 아래 버튼에서 가능합니다.`);return;}
+ const file=files[0];inspection('공개키·전자서명·SHA-256을 검증하는 중입니다...');
+ try{
+  const x=await readJSON(file);
+  if(x.format!=='GARD_ELI_RELEASE_V1'){
+   if(x.format==='GARD_ELI_LISTING_V1')throw Error('전시용 JSON입니다. 승인 제공용 .gardrelease.json을 선택하세요.');
+   if(x.format==='GARD_ELI_INQUIRY_V1')throw Error('협상 요청 JSON입니다. 오너가 발행한 승인 제공 파일을 선택하세요.');
+   throw Error('이 형식은 별도 구형 호환 경로로 수신합니다. 이 미리보기는 GARD_ELI_RELEASE_V1만 지원합니다.');
+  }
+  if(!x.packageId||!x.recipient?.buyerId||!x.recipient?.campaignId||!x.sender?.publicJwk||!x.sender?.fingerprint||!x.cipherHash||!x.cipher||!x.signature)throw Error('서명된 수신 패키지 필수 항목이 없습니다.');
+  const unsigned={...x};delete unsigned.signature;
+  if(!await verifyObject(unsigned,x.signature,x.sender.publicJwk))throw Error('전자서명 검증 실패: 신뢰하지 않는 파일입니다.');
+  if(await sha256(canonicalJson(x.cipher))!==x.cipherHash)throw Error('암호문 SHA-256 해시 불일치: 사용을 중지하세요.');
+  if(await fingerprint(x.sender.publicJwk)!==x.sender.fingerprint)throw Error('발신 공개키 지문이 일치하지 않습니다.');
+  if(isExpired(x.terms?.usageExpiry)||isExpired(x.terms?.retentionUntil))throw Error('자료 보유기간 또는 이용허락이 만료됐습니다.');
+  const ctx=buyerFields(),match=recipientMatch(x,ctx);
+  inspected={file, packageId:x.packageId, recipient:x.recipient, fingerprint:x.sender.fingerprint};
+  $('applyRecipient').disabled=false;
+  const msg=`전자서명 PASS · 암호문 해시 PASS · 공개키 지문 PASS
+`+
+   `서명된 패키지 ID: ${x.packageId}
+`+
+   `지정된 구매자 ID: ${x.recipient.buyerId}
+지정된 캠페인 ID: ${x.recipient.campaignId}
+`+
+   `현재 01번 입력값 일치: ${match?'일치':'불일치 — 입력값을 확인하세요'}
+`+
+   `이용 만료: ${x.terms?.usageExpiry||'기재 없음'} · 보유 종료: ${x.terms?.retentionUntil||'기재 없음'}
+`+
+   `※ 이 검사는 암호문 무결성 검사이며, 복호화 성공과 오너의 법적 신원 인증을 뜻하지 않습니다.`;
+  inspection(msg,match?'good':'warn');
+ }catch(e){inspection('파일 검사 중단: '+errStr(e),'bad');}
+}
+
 async function getCatalog(){try{const r=await fetch('./data/listings.json',{cache:'no-store'});const d=await r.json();if(Array.isArray(d))listings=d;}catch{listings=[]}}
 function buyerFields(){return {buyerId:$('buyerId').value.trim(),buyerName:$('buyerName').value.trim(),campaignId:$('campaignId').value.trim()}}
 function findPackageId(id){return received.some(x=>x.packageId===id)}
@@ -11,7 +53,7 @@ async function handleRelease(x,pass,ctx){
  if(!await verifyObject(unsigned,x.signature,x.sender.publicJwk))throw Error('ECDSA-P256 서명 검증 실패. 자료 사용 중지');
  if(await sha256(canonicalJson(x.cipher))!==x.cipherHash)throw Error('암호문 SHA-256 검증 실패');
  if(await fingerprint(x.sender.publicJwk)!==x.sender.fingerprint)throw Error('공개키 지문 불일치');
- if(x.recipient?.buyerId!==ctx.buyerId||x.recipient?.campaignId!==ctx.campaignId)throw Error('현재 구매자·캠페인과 수신대상이 일치하지 않습니다.');
+ if(!recipientMatch(x,ctx))throw Error(`수신대상 ID 불일치: 이 파일은 구매자 ID [${x.recipient?.buyerId||'없음'}], 캠페인 ID [${x.recipient?.campaignId||'없음'}]용입니다. 01 구매기관 설정 또는 협상 요청 JSON을 확인하세요.`);
  if(isExpired(x.terms?.usageExpiry)||isExpired(x.terms?.retentionUntil))throw Error('이용허락 또는 보유 기간이 만료되었습니다.');
  if(!pass)throw Error('암호화 자료를 열려면 별도 수령한 패키지 암호가 필요합니다.');
  const data=await decryptJSON(x.cipher,pass);
@@ -46,12 +88,27 @@ async function handleLegacy(x,ctx){
  }
  throw Error('지원하지 않는 패키지 형식입니다.');
 }
-async function importFiles(){try{const ctx=buyerFields();if(!ctx.buyerId||!ctx.campaignId)throw Error('구매자 ID와 캠페인 ID를 먼저 입력하세요.');const files=[...$('releaseFiles').files];if(!files.length)throw Error('오너 제공 파일을 선택하세요.');let imported=0;const errors=[];
- for(const file of files){try{const obj=await readJSON(file);const row=obj.format==='GARD_ELI_RELEASE_V1'?await handleRelease(obj,$('receivedPass').value,ctx):await handleLegacy(obj,ctx);
-  if(findPackageId(row.packageId))throw Error('중복 패키지 ID: 재수입 차단');received.push(row);imported++;
- }catch(e){errors.push(`${file.name}: ${errStr(e)}`)}}
- $('receivedPass').value='';render();status(`수신 ${imported}건 성공 · ${errors.length}건 제외${errors.length?' — '+errors.join(' / '):''}`,errors.length>0);
-}catch(e){status(errStr(e),true)}}
+async function importFiles(){
+ $('importReleases').disabled=true;
+ intake('파일 검증 시작. 암호, 파일, 수신 기관 ID를 점검 중입니다...','info');
+ try{
+  const ctx=buyerFields();if(!ctx.buyerId||!ctx.campaignId)throw Error('01 구매기관 설정에서 구매자 ID와 캠페인 ID를 먼저 입력하세요.');
+  const files=[...$('releaseFiles').files];if(!files.length)throw Error('02 파일 수신에서 오너 제공 파일을 선택하세요.');
+  let imported=0;const errors=[];
+  for(const file of files){
+   try{
+    const obj=await readJSON(file);
+    const row=obj.format==='GARD_ELI_RELEASE_V1'?await handleRelease(obj,$('receivedPass').value,ctx):await handleLegacy(obj,ctx);
+    if(findPackageId(row.packageId))throw Error('중복 패키지 ID: 재수입 차단');
+    received.push(row);imported++;
+   }catch(e){errors.push(`${file.name}: ${errStr(e)}`);}
+  }
+  $('receivedPass').value='';render();
+  const message=`수신 성공 ${imported}건 / 실패·제외 ${errors.length}건`+(errors.length?'\n'+errors.join('\n'):'\n성공: 승인된 데이터를 현재 탭 메모리에만 보관했습니다. 03 사회성과 측정을 확인하세요.');
+  intake(message,errors.length?'bad':'good');status(`수신 ${imported}건 성공 · ${errors.length}건 제외`,errors.length>0);
+ }catch(e){intake(errStr(e),'bad');status(errStr(e),true);}
+ finally{$('importReleases').disabled=false;}
+}
 function render(){
  $('verificationRows').innerHTML=received.map(e=>{const r=calculateOutcome(e);return `<article class="item"><span class="chip">${escapeHTML(e.verification||e.securityLevel||'검증 미상')}</span><h3>${escapeHTML(e.pseudonym)}</h3><p>${escapeHTML(e.task)} · ${escapeHTML(e.metric)}</p><div class="metrics"><span class="metric">${escapeHTML(e.baseline??'결측')} → ${escapeHTML(e.followup??'결측')} ${escapeHTML(e.unit)}</span><span class="metric">${escapeHTML(r.interpretation)}</span></div><small>자료: ${escapeHTML(e.sourceType)} · ${escapeHTML(e.packageId)}</small>${e.sourceType!=='GARD_ELI_RELEASE_V1'?`<div><label for="legacy-${escapeHTML(e.packageId)}">기존 자료의 개선 방향 직접 확인</label><select data-direction-id="${escapeHTML(e.packageId)}"><option value="UNKNOWN" ${e.direction==='UNKNOWN'?'selected':''}>미확인 — 보고서 비교에서 제외</option><option value="INCREASE" ${e.direction==='INCREASE'?'selected':''}>수치 증가가 개선</option><option value="DECREASE" ${e.direction==='DECREASE'?'selected':''}>수치 감소가 개선</option></select><small>기존 파일의 동일 과업 확인 기록이 있으면 방향 선택 후에만 비교합니다.</small></div>`:''}</article>`}).join('')||'<div class="empty">수신한 자료가 없습니다. 패키지 암호와 정확한 기관/캠페인 ID를 확인하세요.</div>';
  $('feedbackPackage').innerHTML=received.map(x=>`<option value="${escapeHTML(x.packageId)}">${escapeHTML(x.pseudonym)} · ${escapeHTML(x.packageId.slice(0,15))}</option>`).join('')||'<option value="">대상 없음</option>';
@@ -71,10 +128,27 @@ function render(){
 }
 $('verificationRows').addEventListener('change',e=>{const s=e.target.closest('select[data-direction-id]');if(!s)return;const x=received.find(q=>q.packageId===s.dataset.directionId);if(!x)return;x.direction=s.value;x.sameTask=x.legacyComparable===true&&s.value!=='UNKNOWN';x.reviewedDirectionAt=isoNow();render();status('기존 기록에 관해 구매자가 비교 방향을 지정했습니다. 이 작업은 독립 검증·승인이 아닙니다.');});
 $('loadInquiry').addEventListener('click',async()=>{try{const j=await readJSON($('myInquiry').files[0]);if(j.format==='GARD_ELI_LISTING_V1')throw Error('선택한 파일은 오너 공개 전시용 JSON입니다. 위의 공개 전시장에서 사용하세요. 여기에는 GARD_ELI_INQUIRY_V1 구매자 요청 파일만 가져올 수 있습니다.');const q=validateInquiry(j);$('buyerId').value=q.buyerId;$('buyerName').value=q.buyerName;$('campaignId').value=q.campaignId;received=[];render();status('협상 요청에 기록된 구매자·캠페인 식별자를 가져왔습니다.');}catch(e){status(errStr(e),true)}});
+$('releaseFiles').addEventListener('change',inspectSelectedRelease);
+$('inspectRelease').addEventListener('click',inspectSelectedRelease);
+$('applyRecipient').addEventListener('click',()=>{
+ if(!inspected||$('releaseFiles').files.length!==1||inspected.file!==$('releaseFiles').files[0]){inspection('파일을 다시 검사한 뒤 적용하세요.','bad');return;}
+ if(!confirm('전자서명된 파일의 수신대상 ID를 구매기관 설정에 복사합니다. 단, 이것은 구매자의 신원 인증이 아닙니다. 실제 협상 요청 JSON과 대조해 본인이 정당한 수신자인지 확인하셨습니까?'))return;
+ const old=buyerFields();
+ if(received.length&&(old.buyerId!==inspected.recipient.buyerId||old.campaignId!==inspected.recipient.campaignId)){
+  if(!confirm('이미 수신한 자료의 기관/캠페인 설정이 달라집니다. 수신 메모리만 초기화하고 변경하시겠습니까?'))return;
+  received=[];
+ }
+ $('buyerId').value=inspected.recipient.buyerId;
+ $('campaignId').value=inspected.recipient.campaignId;
+ $('buyerName').value=inspected.recipient.buyerName||$('buyerName').value;
+ render();
+ inspectSelectedRelease();
+ intake('수신 파일의 식별자를 01 구매기관 설정에 복사했습니다. 오너와 협상 요청 JSON을 별도로 대조하고 수신자용 암호를 입력해 ② 수신 버튼을 누르세요.','info');
+});
 $('importReleases').addEventListener('click',importFiles);
-$('clearMemory').addEventListener('click',()=>{if(received.length&&!confirm('현재 열린 탭에 보유한 수신자료를 초기화하시겠습니까?'))return;received=[];render();status('메모리에서 수신자료를 초기화했습니다. 기존 파일 사본은 삭제하지 않았습니다.');});
+$('clearMemory').addEventListener('click',()=>{if(received.length&&!confirm('현재 열린 탭에 보유한 수신자료를 초기화하시겠습니까?'))return;received=[];render();intake('수신 메모리를 초기화했습니다. 선택 파일과 오너의 원본은 삭제하지 않았습니다.','info');status('메모리에서 수신자료를 초기화했습니다. 기존 파일 사본은 삭제하지 않았습니다.');});
 for(const id of ['buyerId','campaignId','invited'])$(id).addEventListener('change',render);
 $('exportReport').addEventListener('click',async()=>{try{const report=computeReport(received,$('invited').value,$('campaignId').value.trim());if(!report.rows.length)throw Error('보고서에 수신 자료가 없습니다.');const out={format:'GARD_ELI_BUYER_REPORT_V1',reportId:`REP-${uuid()}`,buyer:buyerFields(),generatedAt:isoNow(),method:'RAW_ONLY_DESCRIPTIVE_COUNTS',report:{...report,groups:report.groups.map(({rows,...g})=>g)},interpretation:'개인 변화 기술통계; 사회성과의 인과적 귀속과 화폐가치 평가 미수행',isDemo:received.some(x=>x.isDemo)};out.reportHash=await sha256(canonicalJson(out));saveFile(`GARD_ELI_REPORT_${out.reportId}.json`,out);status('측정 결과 JSON 저장 완료. 가명별 원장도 포함되어 있으므로 외부 재공개에 주의하세요.');}catch(e){status(errStr(e),true)}});
 $('exportCsv').addEventListener('click',()=>{try{const r=computeReport(received,$('invited').value,$('campaignId').value.trim());if(!r.rows.length)throw Error('내보낼 행이 없습니다.');const cols=['packageId','pseudonym','provider','service','task','metric','unit','direction','baseline','followup','measurementSource','baselineSource','verification','interpretation'];const quote=v=>'"'+String(v??'').replace(/^[=+@\-\t\r]/,s=>"'"+s).replace(/"/g,'""')+'"';const text='\uFEFF'+[cols.join(','),...r.rows.map(e=>cols.map(c=>quote(c==='interpretation'?calculateOutcome(e).interpretation:e[c])).join(','))].join('\r\n');const blob=new Blob([text],{type:'text/csv;charset=utf-8'});const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download='GARD_ELI_accepted_rows.csv';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),5000);status('CSV 저장 완료. 비식별 정보라도 재식별 위험을 점검하세요.');}catch(e){status(errStr(e),true)}});
 $('exportReturn').addEventListener('click',()=>{try{const e=received.find(x=>x.packageId===$('feedbackPackage').value);if(!e)throw Error('회신 대상 자료를 선택하세요.');const ctx=buyerFields();if(!ctx.buyerId)throw Error('구매자 ID가 없습니다.');const o={format:'GARD_ELI_RETURN_V1',returnId:`RET-${uuid()}`,packageId:e.packageId,buyerId:ctx.buyerId,buyerName:ctx.buyerName,campaignId:ctx.campaignId,reviewStatus:$('reviewStatus').value,staffObservation:$('staffObservation').value.trim(),improvementPromise:$('improvementPromise').value.trim(),originAuthentication:'NOT_CRYPTOGRAPHICALLY_SIGNED',createdAt:isoNow()};if(!o.staffObservation||!o.improvementPromise)throw Error('검토 의견과 개선 약속을 작성하세요.');saveFile(`GARD_RETURN_${o.returnId}.gardreturn.json`,o);status('오너에게 반환할 회신 JSON을 생성했습니다. 별도 안전한 채널로 전달하세요.');}catch(err){status(errStr(err),true)}});
-getCatalog().then(()=>{render();status('구매자 앱 준비 완료. 파일은 자동 수신되지 않습니다.');});
+getCatalog().then(()=>{render();intake('수신 모듈 준비 완료. ① 서명·해시·수신 대상 먼저 확인 → ② 수신 순서로 이용하세요.','good');status('구매자 앱 준비 완료. 파일은 자동 수신되지 않습니다.');}).catch(e=>{intake('수신 모듈 초기화 오류: '+errStr(e),'bad');status(errStr(e),true)});

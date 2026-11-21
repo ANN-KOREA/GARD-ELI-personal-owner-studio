@@ -3,3 +3,9 @@
 .hero{background:linear-gradient(128deg,#113f4f 0%,#156964 100%);color:white;border-radius:16px;padding:30px;margin-bottom:22px}.hero h2{color:#fff;font-size:clamp(26px,3.6vw,41px);line-height:1.25}.hero p{color:#daeee9}.badge{display:inline-block;background:#e7f5f1;color:#0c5550;padding:3px 10px;border-radius:20px;font-size:13px;font-weight:700}.pillwarn{display:inline-block;background:#fff2df;color:#744800;padding:4px 9px;border-radius:8px}.simpletable{width:100%;border-collapse:collapse;font-size:15px;overflow-wrap:anywhere}.simpletable td,.simpletable th{border-bottom:1px solid var(--border);padding:9px;text-align:left}.summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:11px}.summary-item{padding:14px;background:#eef5f4;border:1px solid var(--border);border-radius:10px;text-align:center}.summary-item strong{display:block;font-size:29px;color:#086e63}.summary-item small{display:block}.tag{border:1px solid #b3d2d5;border-radius:10px;padding:3px 7px;font-size:12px}.empty{border:1px dashed #9bb7bd;padding:25px;text-align:center;border-radius:9px}.hidden{display:none}code{font-size:.85em;overflow-wrap:anywhere}@media(max-width:600px){.hero{padding:20px}.simpletable{font-size:13px}}
 
 .spaced{margin-top:20px}.buttonlink.gold{background:#f4e4b8;color:#27464a}
+
+/* Buyer intake diagnostics v1.2 */
+.intake-diagnostic,.intake-status{white-space:pre-wrap;overflow-wrap:anywhere;border-radius:10px;padding:14px 16px;margin:12px 0;border:1px solid var(--border);background:#f1f7f7;font-weight:500;line-height:1.65}
+.intake-diagnostic.good,.intake-status.good{background:#e4f5ec;border-color:#9cddbb;color:#135734}
+.intake-diagnostic.warn{background:#fff5df;border-color:#edca89;color:#744a06}
+.intake-diagnostic.bad,.intake-status.bad{background:#fff0ef;border-color:#e9afa9;color:#941f22}
