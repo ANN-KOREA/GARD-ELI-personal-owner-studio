@@ -35,6 +35,8 @@ async function handleLegacy(x,ctx){
   if(p.campaignId!==ctx.campaignId||p.buyerId!==ctx.buyerId)throw Error('기존 제공 파일의 수신 기관 또는 캠페인이 일치하지 않습니다.');
   return {...p,legacyComparable:x.payloadJson?JSON.parse(x.payloadJson)?.items?.outcomes?.[0]?.comparability==='COMPARABLE':false,sourceType:'GARD_ELI_SHARE_V1',receivedAt:isoNow()};
  }
+ if(x.format==='GARD_ELI_LISTING_V1')throw Error('이 파일은 오너의 전시용 .gardlisting.json입니다. 상단 공개 전시장에만 불러올 수 있고, 사회성과 수신 자료가 아닙니다.');
+ if(x.format==='GARD_ELI_INQUIRY_V1')throw Error('이 파일은 구매자 협상 요청 JSON입니다. 오너의 승인 후 제공받은 .gardrelease.json을 선택하세요.');
  if(x.protocol==='ELI-P2P'&&x.package_type==='DISCLOSURE_SUBMISSION'){
   if((await sha256(canonicalJson(x.payload)))!==x.payload_hash)throw Error('ELI-P2P 원본 해시 검증 실패');
   if(x.recipient_node&&x.recipient_node!==ctx.buyerId)throw Error('다른 구매자에게 지정된 ELI-P2P 패키지입니다.');
@@ -68,7 +70,7 @@ function render(){
  $('recordTable').innerHTML=report.rows.length?`<table class="simpletable"><thead><tr><th>오너(가명)</th><th>지표</th><th>사전</th><th>사후</th><th>판정</th><th>증거 등급</th></tr></thead><tbody>${report.rows.map(e=>`<tr><td>${escapeHTML(e.pseudonym)}</td><td>${escapeHTML(e.metric)}</td><td>${escapeHTML(e.baseline??'결측')}</td><td>${escapeHTML(e.followup??'결측')}</td><td>${escapeHTML(calculateOutcome(e).interpretation)}</td><td>${escapeHTML(e.verification||e.securityLevel||'미상')}</td></tr>`).join('')}</tbody></table>`:'<p class="muted">아직 수신된 개인 데이터가 없습니다.</p>';
 }
 $('verificationRows').addEventListener('change',e=>{const s=e.target.closest('select[data-direction-id]');if(!s)return;const x=received.find(q=>q.packageId===s.dataset.directionId);if(!x)return;x.direction=s.value;x.sameTask=x.legacyComparable===true&&s.value!=='UNKNOWN';x.reviewedDirectionAt=isoNow();render();status('기존 기록에 관해 구매자가 비교 방향을 지정했습니다. 이 작업은 독립 검증·승인이 아닙니다.');});
-$('loadInquiry').addEventListener('click',async()=>{try{const q=validateInquiry(await readJSON($('myInquiry').files[0]));$('buyerId').value=q.buyerId;$('buyerName').value=q.buyerName;$('campaignId').value=q.campaignId;received=[];render();status('협상 요청에 기록된 구매자·캠페인 식별자를 가져왔습니다.');}catch(e){status(errStr(e),true)}});
+$('loadInquiry').addEventListener('click',async()=>{try{const j=await readJSON($('myInquiry').files[0]);if(j.format==='GARD_ELI_LISTING_V1')throw Error('선택한 파일은 오너 공개 전시용 JSON입니다. 위의 공개 전시장에서 사용하세요. 여기에는 GARD_ELI_INQUIRY_V1 구매자 요청 파일만 가져올 수 있습니다.');const q=validateInquiry(j);$('buyerId').value=q.buyerId;$('buyerName').value=q.buyerName;$('campaignId').value=q.campaignId;received=[];render();status('협상 요청에 기록된 구매자·캠페인 식별자를 가져왔습니다.');}catch(e){status(errStr(e),true)}});
 $('importReleases').addEventListener('click',importFiles);
 $('clearMemory').addEventListener('click',()=>{if(received.length&&!confirm('현재 열린 탭에 보유한 수신자료를 초기화하시겠습니까?'))return;received=[];render();status('메모리에서 수신자료를 초기화했습니다. 기존 파일 사본은 삭제하지 않았습니다.');});
 for(const id of ['buyerId','campaignId','invited'])$(id).addEventListener('change',render);

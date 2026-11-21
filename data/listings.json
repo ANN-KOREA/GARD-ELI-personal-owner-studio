@@ -1,28 +1,58 @@
-{
-  "format": "GARD_ELI_LISTING_V1",
-  "listingId": "GEL-10180c0b-0047-4eb9-b107-a7e5068bb038",
-  "ownerAlias": "owner-wilson-01",
-  "ownerKey": {
-    "crv": "P-256",
-    "ext": true,
-    "key_ops": [
-      "verify"
-    ],
-    "kty": "EC",
-    "x": "Ukxqq1yViva_js6iLzfgBs7qBMA4faxYlqhfVzbm6bk",
-    "y": "yYz720tK0n3boAdjsaoD3e-VZFehmrPkHPKhvu9rvDk"
+[
+  {
+    "format": "GARD_ELI_LISTING_V1",
+    "listingId": "GEL-10180c0b-0047-4eb9-b107-a7e5068bb038",
+    "ownerAlias": "owner-wilson-01",
+    "ownerKey": {
+      "crv": "P-256",
+      "ext": true,
+      "key_ops": [
+        "verify"
+      ],
+      "kty": "EC",
+      "x": "Ukxqq1yViva_js6iLzfgBs7qBMA4faxYlqhfVzbm6bk",
+      "y": "yYz720tK0n3boAdjsaoD3e-VZFehmrPkHPKhvu9rvDk"
+    },
+    "ownerKeyFingerprint": "3d59426f7cfdfd675604c30d453a1440033921c4e2706b1e9e12299269fb3d71",
+    "title": "건강서비스 경험을 삶의 기능수행 관점으로 기록",
+    "summary": "의료서비스 이용 과정에서 안전과 접근성, 정보 확인 및 이후 의사결정을 분리해 기록하고, 생활의 지속성을 기준으로 다시 해석했다.",
+    "provider": "국가건강검진",
+    "service": "검진 동행, 의료진 설명, ICF 관점 대화",
+    "task": "검사 과정의 부담과 필요한 사후 행동 구분",
+    "metric": "검사 경험과 후속 행동의 기록 완료 건수",
+    "unit": "other",
+    "measurementStatus": "RAW_ONLY",
+    "disclosure": "INQUIRY_REQUIRED",
+    "isDemo": false,
+    "publishedAt": "2026-11-20T11:59:12.754Z",
+    "signature": "6w4RquIMdo1z6bTSuNhZNbUreCS/FmkPNliY4ajB1FypxFA64elxKnwclEiWM8WlolnnCQrIQeam0YFSqfR+Uw=="
   },
-  "ownerKeyFingerprint": "3d59426f7cfdfd675604c30d453a1440033921c4e2706b1e9e12299269fb3d71",
-  "title": "건강서비스 경험을 삶의 기능수행 관점으로 기록",
-  "summary": "의료서비스 이용 과정에서 안전과 접근성, 정보 확인 및 이후 의사결정을 분리해 기록하고, 생활의 지속성을 기준으로 다시 해석했다.",
-  "provider": "국가건강검진",
-  "service": "검진 동행, 의료진 설명, ICF 관점 대화",
-  "task": "검사 과정의 부담과 필요한 사후 행동 구분",
-  "metric": "검사 경험과 후속 행동의 기록 완료 건수",
-  "unit": "other",
-  "measurementStatus": "RAW_ONLY",
-  "disclosure": "INQUIRY_REQUIRED",
-  "isDemo": false,
-  "publishedAt": "2026-11-20T11:59:12.754Z",
-  "signature": "6w4RquIMdo1z6bTSuNhZNbUreCS/FmkPNliY4ajB1FypxFA64elxKnwclEiWM8WlolnnCQrIQeam0YFSqfR+Uw=="
-}
+  {
+    "format": "GARD_ELI_LISTING_V1",
+    "listingId": "GEL-DEMO-P01",
+    "ownerAlias": "[가상] 고객 P01",
+    "ownerKey": {
+      "key_ops": [
+        "verify"
+      ],
+      "ext": true,
+      "kty": "EC",
+      "x": "jt0YYDXJq38JaGNGKrZtS-m76_s-4PIXsUWujiYvw0s",
+      "y": "AoiXqbVrz-91gEVHDvDk71a9-rKUkdYZCkoPKGIIzm0",
+      "crv": "P-256"
+    },
+    "ownerKeyFingerprint": "384413355aff40e93f6051fcb251b6a057240b1e6ff924d71730546352204f80",
+    "title": "[가상] 나의 온라인 신청 독립 완수",
+    "summary": "합성 시연 사례. 디지털 교육 전후 같은 신청 과업을 20분에서 15분으로 수행한 가상 개인이 직접 공개를 승인했다고 가정한 예시.",
+    "provider": "가상 새길 디지털센터",
+    "service": "생활 디지털 교육",
+    "task": "온라인 신청서 제출",
+    "metric": "신청 소요시간",
+    "unit": "minute",
+    "measurementStatus": "RAW_ONLY",
+    "disclosure": "INQUIRY_REQUIRED",
+    "isDemo": true,
+    "publishedAt": "2026-11-20T00:00:00.000Z",
+    "signature": "iGYW7RGB0R90s61/A1o3jfcDxF6ZJ7l8kvY81dM4iH5UX3/kQ8h4b88lCPkmYn4eWVTn/CLxzG0jO0vFHZxdGQ=="
+  }
+]
